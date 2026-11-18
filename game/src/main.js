@@ -1,27 +1,15 @@
-// NIGHTFALL: DISTRICT ZERO is a small, offline driving-and-foot patrol through Vespera.
-// The complete scene is drawn on one canvas so the four preview URLs work without assets.
+// NIGHTFALL: DISTRICT ZERO — a self-contained Vespera City street simulation.
+// Canvas primitives keep the build portable and all preview routes deterministic.
 const canvas = document.querySelector('#game');
-const context = canvas.getContext('2d');
-const screen = { width: 1280, height: 800 };
+const ctx = canvas.getContext('2d');
+const view = { w: 1280, h: 800 };
 const tau = Math.PI * 2;
-const params = new URLSearchParams(location.search);
-const shot = params.get('shot') || '';
-let randomState = Number(params.get('seed') || 1);
-const random = () => {
-  randomState = (randomState * 1664525 + 1013904223) >>> 0;
-  return randomState / 4294967296;
-};
-
-const neighborhoods = ['HARBOR', 'DOWNTOWN', 'OLD QUARTER', 'INDUSTRIAL', 'HILLSIDE', 'MARKET', 'SOUTHSIDE', 'TRANSIT'];
-const palette = ['#e9b75f', '#61c0c2', '#b6c5d0', '#cf5b55', '#596d88'];
-const architecture = [];
-for (let row = -5; row <= 5; row += 1) {
-  for (let col = -6; col <= 6; col += 1) {
-    const district = (Math.abs(col) + Math.abs(row)) % neighborhoods.length;
-    architecture.push({ col, row, district, height: 100 + random() * 170, width: 110 + random() * 70, glow: random() });
-  }
-}
-
+const query = new URLSearchParams(location.search);
+const preview = query.get('shot') || '';
+let seed = Number(query.get('seed') || 1);
+const dice = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+const districts = ['HARBOR', 'DOWNTOWN', 'OLD QUARTER', 'INDUSTRIAL', 'HILLSIDE', 'MARKET', 'SOUTHSIDE', 'TRANSIT'];
+const facades = ['#35424b', '#393c49', '#3d4546', '#4a4141', '#384552', '#484146', '#34414a', '#39454b'];
 const jobs = [
   ['BACK IN THE CITY', 'Meet Mara Venn, retrieve the stolen vehicle', 250, 1],
   ['HOT CARGO', 'Steal the delivery van and take it to Blackwater warehouse', 600, 1],
@@ -32,422 +20,200 @@ const jobs = [
   ['OLD DEBTS', 'Help your ally escape the enemy faction', 1500, 4],
   ['DISTRICT ZERO', 'Survive the finale and reach the safehouse', 2500, 5],
 ];
-const player = {
-  x: 0, y: 0, angle: 0, speed: 0, health: 92, armor: 62, ammo: 17,
-  ammoByWeapon: [17, 42, 90, 24, 60], cash: 4250, wanted: 0,
-  carName: 'ARCLIGHT VELO', job: jobs[0][0], objective: 'Meet Mara Venn at the Meridian underpass',
-  step: 0, onFoot: false, reputation: 0, weapon: 0,
-};
-let missionStates = jobs.map((_, index) => index === 0 ? 'AVAILABLE' : 'LOCKED');
-const cars = [];
-const walkers = [];
-const cruisers = [];
-const tracers = [];
-for (let i = 0; i < 18; i += 1) cars.push({ x: (random() - .5) * 1600, y: (random() - .5) * 1300, angle: random() * tau, pace: 1.1 + random() * 1.6, color: palette[i % palette.length], kind: i % 5 === 0 ? 'van' : 'sedan' });
-for (let i = 0; i < 27; i += 1) walkers.push({ x: (random() - .5) * 1300, y: (random() - .5) * 1100, angle: random() * tau, pace: .35 + random() * .5, color: ['#e8a773', '#6bc2bc', '#d5d2c8', '#dc6b78', '#acb4e4'][i % 5] });
-const held = new Set();
-let paused = false;
-let titleScreen = !shot;
-let mapVisible = false;
-let journalVisible = false;
-let nightTint = shot === 'night';
-let clock = 0;
-let message = 'MARA VENN  //  The city remembers everything.';
-let messageSeconds = 4;
-let muzzleSeconds = 0;
-
-function announce(text, duration = 3) {
-  message = text;
-  messageSeconds = duration;
+const hero = { x: 0, y: 0, angle: 0, speed: 0, health: 92, armor: 62, ammo: 17, mags: [17, 42, 90, 24, 60], cash: 4250, heat: 0, car: 'ARCLIGHT VELO', job: jobs[0][0], goal: 'Meet Mara Venn at the Meridian underpass', chapter: 0, walking: false, rep: 0, gun: 0 };
+const blocks = [], traffic = [], people = [], patrols = [], shots = [];
+for (let y = -5; y <= 5; y++) for (let x = -6; x <= 6; x++) blocks.push({ x, y, zone: (Math.abs(x) + Math.abs(y)) % 8, tall: 100 + dice() * 170, wide: 110 + dice() * 70, glow: dice() });
+const paintColors = ['#e9b75f', '#61c0c2', '#b6c5d0', '#cf5b55', '#596d88'];
+for (let i = 0; i < 18; i++) traffic.push({ x: (dice() - .5) * 1600, y: (dice() - .5) * 1300, dir: dice() * tau, pace: 1.1 + dice() * 1.6, color: paintColors[i % 5], type: i % 5 === 0 ? 'van' : 'sedan' });
+for (let i = 0; i < 27; i++) people.push({ x: (dice() - .5) * 1300, y: (dice() - .5) * 1100, dir: dice() * tau, pace: .35 + dice() * .5, color: ['#e8a773', '#6bc2bc', '#d5d2c8', '#dc6b78', '#acb4e4'][i % 5] });
+let keys = new Set(), paused = false, menu = !preview, atlas = false, journal = false;
+let night = preview === 'night', elapsed = 0, toast = 'MARA VENN  //  The city remembers everything.', toastTime = 4, flash = 0;
+let states = jobs.map((_, i) => i ? 'LOCKED' : 'AVAILABLE');
+const say = (line, seconds = 3) => { toast = line; toastTime = seconds; };
+function setChapter() {
+  const n = Math.min(hero.chapter, jobs.length - 1);
+  hero.job = jobs[n][0]; hero.goal = jobs[n][1];
+  states = states.map((_, i) => i < n ? 'COMPLETED' : i === n ? 'ACTIVE' : i === n + 1 ? 'AVAILABLE' : 'LOCKED');
 }
-
-function saveCampaign() {
-  localStorage.setItem('nightfall-save', JSON.stringify({
-    step: player.step, cash: player.cash, reputation: player.reputation,
-    health: player.health, armor: player.armor, missionStates, nightTint,
-  }));
-  announce('GAME SAVED  //  Vespera remembers.');
+function save() {
+  localStorage.setItem('nightfall-save', JSON.stringify({ chapter: hero.chapter, cash: hero.cash, rep: hero.rep, health: hero.health, armor: hero.armor, states, night }));
+  say('GAME SAVED  //  Vespera remembers.');
 }
-
-function selectJob() {
-  const current = Math.min(player.step, jobs.length - 1);
-  player.job = jobs[current][0];
-  player.objective = jobs[current][1];
-  missionStates = missionStates.map((_, index) => index < current ? 'COMPLETED' : index === current ? 'ACTIVE' : index === current + 1 ? 'AVAILABLE' : 'LOCKED');
-}
-
-function continueCampaign() {
+function resumeSave() {
   try {
-    const saved = JSON.parse(localStorage.getItem('nightfall-save') || 'null');
-    if (!saved) return false;
-    player.step = Math.min(jobs.length - 1, saved.step | 0);
-    player.cash = saved.cash || 0;
-    player.reputation = saved.reputation || 0;
-    player.health = saved.health || 92;
-    player.armor = saved.armor || 62;
-    missionStates = Array.isArray(saved.missionStates) ? saved.missionStates : missionStates;
-    nightTint = Boolean(saved.nightTint);
-    titleScreen = false;
-    selectJob();
-    return true;
-  } catch {
-    return false;
+    const data = JSON.parse(localStorage.getItem('nightfall-save') || 'null');
+    if (!data) return false;
+    hero.chapter = Math.min(jobs.length - 1, data.chapter | 0); hero.cash = data.cash || 0; hero.rep = data.rep || 0;
+    hero.health = data.health || 92; hero.armor = data.armor || 62; states = Array.isArray(data.states) ? data.states : states;
+    night = Boolean(data.night); menu = false; setChapter(); return true;
+  } catch { return false; }
+}
+function startGame() { menu = false; setChapter(); }
+function finishJob() {
+  const n = Math.min(hero.chapter, jobs.length - 1), [name, , reward, renown] = jobs[n];
+  hero.cash += reward; hero.rep += renown; hero.chapter++; hero.walking = false; states[n] = 'COMPLETED'; setChapter();
+  say(`MISSION COMPLETE  //  ${name}  +$${reward}  •  REP +${renown}`, 4);
+}
+function useAction() {
+  if (!hero.walking) { hero.walking = true; hero.speed = 0; say('ON FOOT  //  Walk to the marker; E to interact'); return; }
+  if (Math.hypot(hero.x - 310, hero.y + 120) < 78) { finishJob(); return; }
+  if (traffic.some(car => Math.hypot(car.x - hero.x, car.y - hero.y) < 42)) {
+    hero.walking = false; hero.car = 'KESTREL S9'; hero.heat = Math.min(5, hero.heat + 1); say('VEHICLE STOLEN  //  Police interest rising');
   }
 }
-
-function beginCampaign() {
-  titleScreen = false;
-  selectJob();
+function shoot() {
+  if (hero.mags[hero.gun] < 1 || menu) return;
+  hero.mags[hero.gun]--; hero.ammo = hero.mags[hero.gun]; flash = .12;
+  shots.push({ x: hero.x + Math.cos(hero.angle) * 90, y: hero.y + Math.sin(hero.angle) * 90, life: .35 });
+  hero.heat = Math.min(5, Math.max(1, hero.heat)); say('DISCHARGE REPORTED  //  Police attention rising', 2.5);
 }
-
-function completeJob() {
-  const current = Math.min(player.step, jobs.length - 1);
-  const [name, , payout, rep] = jobs[current];
-  player.cash += payout;
-  player.reputation += rep;
-  player.step += 1;
-  player.onFoot = false;
-  missionStates[current] = 'COMPLETED';
-  selectJob();
-  announce(`MISSION COMPLETE  //  ${name}  +$${payout}  •  REP +${rep}`, 4);
-}
-
-function interact() {
-  if (!player.onFoot) {
-    player.onFoot = true;
-    player.speed = 0;
-    announce('ON FOOT  //  Walk to the marker; E to interact');
-    return;
+function stageShot() {
+  if (preview === 'start') Object.assign(hero, { x: 0, y: 0, angle: .14, speed: 2.7, heat: 0, goal: 'Meet Mara Venn at the Meridian underpass' });
+  if (preview === 'play') { Object.assign(hero, { angle: -.35, speed: 0, heat: 1, chapter: 1, job: 'NIGHT SHIFT', goal: 'Recover Elias Rook’s ledger • 38 m' }); people.splice(14); }
+  if (preview === 'chase') {
+    Object.assign(hero, { angle: .12, speed: 4.3, heat: 4, job: 'CROSSTOWN', goal: 'Lose the Vespera Police • break line of sight' });
+    for (let i = 0; i < 4; i++) patrols.push({ x: -180 - i * 105, y: -160 - i * 48, dir: .3, pace: 3.5 + i * .15 });
   }
-  if (Math.hypot(player.x - 310, player.y + 120) < 78) {
-    completeJob();
-    return;
-  }
-  const nearby = cars.find(car => Math.hypot(car.x - player.x, car.y - player.y) < 42);
-  if (nearby) {
-    player.onFoot = false;
-    player.carName = 'KESTREL S9';
-    player.wanted = Math.min(5, player.wanted + 1);
-    announce('VEHICLE STOLEN  //  Police interest rising');
-  }
+  if (preview === 'night') Object.assign(hero, { y: 100, angle: -Math.PI / 2, speed: 0, heat: 0, goal: 'Vespera City • 01:47 AM  //  Blackwater waterfront' });
 }
-
-function fireWeapon() {
-  if (player.ammoByWeapon[player.weapon] <= 0 || titleScreen) return;
-  player.ammoByWeapon[player.weapon] -= 1;
-  player.ammo = player.ammoByWeapon[player.weapon];
-  muzzleSeconds = .12;
-  tracers.push({ x: player.x + Math.cos(player.angle) * 90, y: player.y + Math.sin(player.angle) * 90, life: .35 });
-  player.wanted = Math.min(5, Math.max(1, player.wanted));
-  announce('DISCHARGE REPORTED  //  Police attention rising', 2.5);
-}
-
-function stagePreview() {
-  if (shot === 'start') {
-    Object.assign(player, { x: 0, y: 0, angle: .14, speed: 2.7, wanted: 0, objective: 'Meet Mara Venn at the Meridian underpass' });
-  } else if (shot === 'play') {
-    Object.assign(player, { x: 0, y: 0, angle: -.35, speed: 0, wanted: 1, step: 1, job: 'NIGHT SHIFT', objective: 'Recover Elias Rook’s ledger • 38 m' });
-    walkers.splice(14);
-  } else if (shot === 'chase') {
-    Object.assign(player, { x: 0, y: 0, angle: .12, speed: 4.3, wanted: 4, job: 'CROSSTOWN', objective: 'Lose the Vespera Police • break line of sight' });
-    for (let i = 0; i < 4; i += 1) cruisers.push({ x: player.x - 180 - i * 105, y: player.y - 160 - i * 48, angle: .3, pace: 3.5 + i * .15 });
-  } else if (shot === 'night') {
-    Object.assign(player, { x: 0, y: 100, angle: -Math.PI / 2, speed: 0, wanted: 0, objective: 'Vespera City • 01:47 AM  //  Blackwater waterfront' });
-  }
-}
-stagePreview();
-
-function keyDown(event) {
-  held.add(event.code);
+stageShot();
+function onKey(event) {
+  keys.add(event.code);
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) event.preventDefault();
-  if (event.code === 'Escape') {
-    if (titleScreen) { titleScreen = false; paused = true; }
-    else paused = !paused;
-  }
-  if (event.code === 'KeyM') mapVisible = !mapVisible;
-  if (event.code === 'KeyJ') journalVisible = !journalVisible;
-  if (event.code === 'KeyE') interact();
-  if (event.code === 'KeyR') player.ammo = player.ammoByWeapon[player.weapon];
-  if (event.code === 'Digit1') player.carName = 'ARCLIGHT VELO';
-  if (event.code === 'Digit2') player.carName = 'KESTREL S9';
-  if (event.code === 'Digit3') player.carName = 'ROOK GT';
-  if (event.code === 'KeyF') fireWeapon();
-  if (event.code === 'KeyQ') { player.weapon = (player.weapon + 1) % player.ammoByWeapon.length; player.ammo = player.ammoByWeapon[player.weapon]; }
-  if (event.code === 'KeyK') saveCampaign();
-  if (event.code === 'Enter' && titleScreen) {
-    if (!continueCampaign()) beginCampaign();
-    announce('MARA: Good to have you back, Jace.', 5);
-  }
+  if (event.code === 'Escape') { if (menu) { menu = false; paused = true; } else paused = !paused; }
+  if (event.code === 'KeyM') atlas = !atlas;
+  if (event.code === 'KeyJ') journal = !journal;
+  if (event.code === 'KeyE') useAction();
+  if (event.code === 'KeyR') hero.ammo = hero.mags[hero.gun];
+  if (event.code === 'Digit1') hero.car = 'ARCLIGHT VELO';
+  if (event.code === 'Digit2') hero.car = 'KESTREL S9';
+  if (event.code === 'Digit3') hero.car = 'ROOK GT';
+  if (event.code === 'KeyF') shoot();
+  if (event.code === 'KeyQ') { hero.gun = (hero.gun + 1) % hero.mags.length; hero.ammo = hero.mags[hero.gun]; }
+  if (event.code === 'KeyK') save();
+  if (event.code === 'Enter' && menu) { if (!resumeSave()) startGame(); say('MARA: Good to have you back, Jace.', 5); }
 }
-window.addEventListener('keydown', keyDown);
-window.addEventListener('keyup', event => held.delete(event.code));
+window.addEventListener('keydown', onKey);
+window.addEventListener('keyup', event => keys.delete(event.code));
 canvas.addEventListener('pointerdown', event => {
-  if (titleScreen) {
-    if (event.offsetY > innerHeight * .47 && event.offsetY < innerHeight * .60 && localStorage.getItem('nightfall-save')) continueCampaign();
-    else beginCampaign();
-  } else if (event.button === 0) fireWeapon();
+  if (menu) { if (event.offsetY > innerHeight * .47 && event.offsetY < innerHeight * .60 && localStorage.getItem('nightfall-save')) resumeSave(); else startGame(); }
+  else if (event.button === 0) shoot();
 });
-
-function fitCanvas() {
-  const pixelRatio = Math.min(devicePixelRatio || 1, 2);
-  canvas.width = Math.round(innerWidth * pixelRatio);
-  canvas.height = Math.round(innerHeight * pixelRatio);
-  context.setTransform(canvas.width / screen.width, 0, 0, canvas.height / screen.height, 0, 0);
-}
-window.addEventListener('resize', fitCanvas);
-fitCanvas();
-
-function tick(delta) {
-  clock += delta;
-  messageSeconds = Math.max(0, messageSeconds - delta);
-  muzzleSeconds = Math.max(0, muzzleSeconds - delta);
-  if (paused || titleScreen) return;
-  const steer = Number(held.has('KeyA') || held.has('ArrowLeft')) - Number(held.has('KeyD') || held.has('ArrowRight'));
-  const forward = held.has('KeyW') || held.has('ArrowUp');
-  const reverse = held.has('KeyS') || held.has('ArrowDown');
-  if (player.onFoot) {
-    player.angle += steer * delta * 2.5;
-    player.x += Math.cos(player.angle) * (Number(forward) - Number(reverse)) * delta * 85;
-    player.y += Math.sin(player.angle) * (Number(forward) - Number(reverse)) * delta * 85;
-  } else {
-    if (forward) player.speed = Math.min(5.2, player.speed + .055);
-    else if (reverse) player.speed = Math.max(-1.5, player.speed - .08);
-    else player.speed *= .986;
-    player.angle += steer * (.032 + Math.min(.035, Math.abs(player.speed) * .007)) * Math.sign(player.speed || 1);
-    player.x += Math.cos(player.angle) * player.speed * delta * 48;
-    player.y += Math.sin(player.angle) * player.speed * delta * 48;
+function fit() { const ratio = Math.min(devicePixelRatio || 1, 2); canvas.width = Math.round(innerWidth * ratio); canvas.height = Math.round(innerHeight * ratio); ctx.setTransform(canvas.width / view.w, 0, 0, canvas.height / view.h, 0, 0); }
+window.addEventListener('resize', fit); fit();
+function update(dt) {
+  elapsed += dt; toastTime = Math.max(0, toastTime - dt); flash = Math.max(0, flash - dt);
+  if (paused || menu) return;
+  const turn = Number(keys.has('KeyA') || keys.has('ArrowLeft')) - Number(keys.has('KeyD') || keys.has('ArrowRight'));
+  const forward = keys.has('KeyW') || keys.has('ArrowUp'), reverse = keys.has('KeyS') || keys.has('ArrowDown');
+  if (hero.walking) { hero.angle += turn * dt * 2.5; hero.x += Math.cos(hero.angle) * (Number(forward) - Number(reverse)) * dt * 85; hero.y += Math.sin(hero.angle) * (Number(forward) - Number(reverse)) * dt * 85; }
+  else {
+    if (forward) hero.speed = Math.min(5.2, hero.speed + .055); else if (reverse) hero.speed = Math.max(-1.5, hero.speed - .08); else hero.speed *= .986;
+    hero.angle += turn * (.032 + Math.min(.035, Math.abs(hero.speed) * .007)) * Math.sign(hero.speed || 1);
+    hero.x += Math.cos(hero.angle) * hero.speed * dt * 48; hero.y += Math.sin(hero.angle) * hero.speed * dt * 48;
   }
-  for (const car of cars) {
-    car.x += Math.cos(car.angle) * car.pace * delta * 42;
-    car.y += Math.sin(car.angle) * car.pace * delta * 42;
-    if (Math.hypot(car.x - player.x, car.y - player.y) > 1350) {
-      car.x = player.x + (random() - .5) * 1600;
-      car.y = player.y + (random() - .5) * 1300;
-    }
-  }
-  for (const person of walkers) {
-    person.x += Math.cos(person.angle) * person.pace * delta * 24;
-    person.y += Math.sin(person.angle) * person.pace * delta * 24;
-    if (Math.hypot(person.x - player.x, person.y - player.y) > 1100) {
-      person.x = player.x + (random() - .5) * 1300;
-      person.y = player.y + (random() - .5) * 1100;
-    }
-  }
-  for (const cop of cruisers) {
-    cop.angle = Math.atan2(player.y - cop.y, player.x - cop.x);
-    cop.x += Math.cos(cop.angle) * cop.pace * delta * 42;
-    cop.y += Math.sin(cop.angle) * cop.pace * delta * 42;
-  }
-  if (player.wanted && shot !== 'chase' && random() < delta * .08) cruisers.push({ x: player.x - 450, y: player.y - 380, angle: 0, pace: 3.2 });
-  if (cruisers.length > 5) cruisers.shift();
-  if (!held.has('KeyF') && player.wanted > 0 && shot !== 'chase') player.wanted = Math.max(0, player.wanted - delta * .006);
-  for (const tracer of tracers) tracer.life -= delta;
-  while (tracers.length && tracers[0].life <= 0) tracers.shift();
+  for (const car of traffic) { car.x += Math.cos(car.dir) * car.pace * dt * 42; car.y += Math.sin(car.dir) * car.pace * dt * 42; if (Math.hypot(car.x - hero.x, car.y - hero.y) > 1350) { car.x = hero.x + (dice() - .5) * 1600; car.y = hero.y + (dice() - .5) * 1300; } }
+  for (const person of people) { person.x += Math.cos(person.dir) * person.pace * dt * 24; person.y += Math.sin(person.dir) * person.pace * dt * 24; if (Math.hypot(person.x - hero.x, person.y - hero.y) > 1100) { person.x = hero.x + (dice() - .5) * 1300; person.y = hero.y + (dice() - .5) * 1100; } }
+  for (const cop of patrols) { cop.dir = Math.atan2(hero.y - cop.y, hero.x - cop.x); cop.x += Math.cos(cop.dir) * cop.pace * dt * 42; cop.y += Math.sin(cop.dir) * cop.pace * dt * 42; }
+  if (hero.heat && preview !== 'chase' && dice() < dt * .08) patrols.push({ x: hero.x - 450, y: hero.y - 380, dir: 0, pace: 3.2 });
+  if (patrols.length > 5) patrols.shift();
+  if (!keys.has('KeyF') && hero.heat && preview !== 'chase') hero.heat = Math.max(0, hero.heat - dt * .006);
+  shots.forEach(item => item.life -= dt); while (shots.length && shots[0].life <= 0) shots.shift();
 }
-
-function roundedRect(x, y, width, height, radius, fill, stroke) {
-  context.beginPath(); context.roundRect(x, y, width, height, radius);
-  if (fill) { context.fillStyle = fill; context.fill(); }
-  if (stroke) { context.strokeStyle = stroke; context.stroke(); }
+function box(x, y, w, h, radius = 12, fill = 'rgba(9,15,24,.88)', stroke = 'rgba(171,206,215,.19)') {
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, radius); if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (stroke) { ctx.strokeStyle = stroke; ctx.stroke(); }
 }
-function toScreen(x, y, originX = player.x, originY = player.y) {
-  return [screen.width / 2 + (x - originX) * .68, screen.height / 2 + (y - originY) * .68];
-}
-function text(value, x, y, size, color = '#fff', align = 'left') {
-  context.font = `600 ${size}px ui-sans-serif,system-ui`;
-  context.fillStyle = color; context.textAlign = align; context.fillText(value, x, y);
-}
-function card(x, y, width, height) { roundedRect(x, y, width, height, 13, 'rgba(9,15,24,.88)', 'rgba(171,206,215,.19)'); }
-
-function paintStreets() {
-  const scale = .68;
-  const originX = screen.width / 2 - player.x * scale;
-  const originY = screen.height / 2 - player.y * scale;
-  context.fillStyle = '#18212b'; context.fillRect(0, 0, screen.width, screen.height);
-  context.fillStyle = '#102d3a'; context.fillRect(0, 570, screen.width, 230);
-  context.fillStyle = '#24424a';
-  for (let pier = 0; pier < 5; pier += 1) context.fillRect(95 + pier * 255, 520, 72, 125);
-  for (let line = -8; line <= 8; line += 1) {
-    const roadX = originX + line * 220 * scale;
-    const roadY = originY + line * 205 * scale;
-    context.fillStyle = '#303a43'; context.fillRect(roadX - 33, 0, 66, screen.height); context.fillRect(0, roadY - 32, screen.width, 64);
-    context.fillStyle = '#d5b96e'; context.globalAlpha = .48;
-    for (let dash = -1; dash < 9; dash += 1) {
-      context.fillRect(roadX - 2, dash * 104 + ((clock * 20) % 104), 4, 32);
-      context.fillRect(dash * 160 + ((clock * 14) % 160), roadY - 2, 31, 4);
-    }
-    context.globalAlpha = 1; context.fillStyle = '#58605c';
-    for (let mark = 0; mark < 12; mark += 1) { context.fillRect(roadX - 46, mark * 74 + 25, 5, 3); context.fillRect(mark * 96 + 35, roadY + 43, 4, 3); }
+function label(value, x, y, size, color = '#fff', align = 'left') { ctx.font = `600 ${size}px ui-sans-serif,system-ui`; ctx.fillStyle = color; ctx.textAlign = align; ctx.fillText(value, x, y); }
+function point(x, y) { return [640 + (x - hero.x) * .68, 400 + (y - hero.y) * .68]; }
+function streets() {
+  const scale = .68, ox = 640 - hero.x * scale, oy = 400 - hero.y * scale;
+  ctx.fillStyle = '#18212b'; ctx.fillRect(0, 0, 1280, 800); ctx.fillStyle = '#102d3a'; ctx.fillRect(0, 570, 1280, 230);
+  ctx.fillStyle = '#24424a'; for (let i = 0; i < 5; i++) ctx.fillRect(95 + i * 255, 520, 72, 125);
+  for (let i = -8; i <= 8; i++) {
+    const rx = ox + i * 220 * scale, ry = oy + i * 205 * scale;
+    ctx.fillStyle = '#303a43'; ctx.fillRect(rx - 33, 0, 66, 800); ctx.fillRect(0, ry - 32, 1280, 64);
+    ctx.fillStyle = '#d5b96e'; ctx.globalAlpha = .48;
+    for (let d = -1; d < 9; d++) { ctx.fillRect(rx - 2, d * 104 + elapsed * 20 % 104, 4, 32); ctx.fillRect(d * 160 + elapsed * 14 % 160, ry - 2, 31, 4); }
+    ctx.globalAlpha = 1; ctx.fillStyle = '#58605c';
+    for (let m = 0; m < 12; m++) { ctx.fillRect(rx - 46, m * 74 + 25, 5, 3); ctx.fillRect(m * 96 + 35, ry + 43, 4, 3); }
   }
 }
-
-function paintBuilding(block) {
-  const [x, y] = toScreen(block.col * 220, block.row * 205);
-  const width = block.width * .68;
-  const height = block.height * .68;
-  const colors = ['#32404a', '#39434b', '#343949', '#394744', '#3e434b', '#484146', '#343d49', '#343e48'];
-  context.fillStyle = 'rgba(0,0,0,.25)'; context.fillRect(x - width / 2 + 13, y - height + 13, width, height);
-  context.fillStyle = '#45515a'; context.fillRect(x - width / 2, y - height - 8, width, 10);
-  context.fillStyle = colors[block.district]; context.fillRect(x - width / 2, y - height, width, height);
-  const rows = Math.max(2, Math.floor(height / 19));
-  const columns = Math.max(2, Math.floor(width / 17));
-  for (let row = 0; row < rows; row += 1) for (let col = 0; col < columns; col += 1) {
-    const glowing = Math.sin((block.col * 13 + col * 5 + row * 7) * 12.3 + block.glow * 20) > -.32;
-    if (!glowing) continue;
-    context.fillStyle = block.district === 1 ? '#f4c871' : '#eccb8a';
-    context.globalAlpha = .23 + ((row + col) % 3) * .12;
-    context.fillRect(x - width / 2 + 8 + col * 16, y - height + 12 + row * 18, 5, 8);
+function building(part) {
+  const [x, y] = point(part.x * 220, part.y * 205), w = part.wide * .68, h = part.tall * .68;
+  ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(x - w / 2 + 13, y - h + 13, w, h); ctx.fillStyle = '#45515a'; ctx.fillRect(x - w / 2, y - h - 8, w, 10);
+  ctx.fillStyle = facades[part.zone]; ctx.fillRect(x - w / 2, y - h, w, h);
+  const rows = Math.max(2, Math.floor(h / 19)), cols = Math.max(2, Math.floor(w / 17));
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (Math.sin((part.x * 13 + c * 5 + r * 7) * 12.3 + part.glow * 20) > -.32) {
+    ctx.fillStyle = part.zone === 1 ? '#f4c871' : '#eccb8a'; ctx.globalAlpha = .23 + ((r + c) % 3) * .12; ctx.fillRect(x - w / 2 + 8 + c * 16, y - h + 12 + r * 18, 5, 8);
   }
-  context.globalAlpha = 1;
-  if (block.district === 1 && block.col === 0 && block.row === 0) {
-    context.fillStyle = '#4fc9cf'; context.fillRect(x - 19, y - height - 25, 38, 18);
-    text('VESPERA', x, y - height - 12, 8, '#e8ffff', 'center');
-  }
-  if (Math.abs(block.col) % 3 === 1 && Math.abs(block.row) % 2 === 0) {
-    context.fillStyle = ['#f06e64', '#42c5cb', '#e6b650'][block.district % 3];
-    context.fillRect(x - width / 2 + 5, y - height + 38, Math.min(width - 12, 45), 8);
-  }
+  ctx.globalAlpha = 1;
+  if (part.zone === 1 && part.x === 0 && part.y === 0) { ctx.fillStyle = '#4fc9cf'; ctx.fillRect(x - 19, y - h - 25, 38, 18); label('VESPERA', x, y - h - 12, 8, '#e8ffff', 'center'); }
+  if (Math.abs(part.x) % 3 === 1 && Math.abs(part.y) % 2 === 0) { ctx.fillStyle = ['#f06e64', '#42c5cb', '#e6b650'][part.zone % 3]; ctx.fillRect(x - w / 2 + 5, y - h + 38, Math.min(w - 12, 45), 8); }
 }
-
-function paintCar(x, y, angle, color, kind = 'sedan', size = 1, policeCar = false) {
-  const [sx, sy] = toScreen(x, y);
-  context.save(); context.translate(sx, sy); context.rotate(angle);
-  const length = (kind === 'van' ? 52 : kind === 'bike' ? 33 : 43) * size;
-  const breadth = (kind === 'van' ? 25 : 21) * size;
-  context.shadowColor = policeCar ? '#57d9ff' : '#000'; context.shadowBlur = policeCar ? 14 : 8;
-  roundedRect(-length / 2, -breadth / 2, length, breadth, 6, color, '#111820');
-  context.shadowBlur = 0;
-  roundedRect(-length * .12, -breadth * .37, length * .42, breadth * .74, 4, policeCar ? '#b9d8df' : '#7eabb2');
-  context.fillStyle = '#f8d79a'; context.fillRect(length * .32, -breadth * .33, 4, 5); context.fillRect(length * .32, breadth * .13, 4, 5);
-  context.fillStyle = '#e46155'; context.fillRect(-length * .48, -breadth * .32, 3, 5); context.fillRect(-length * .48, breadth * .12, 3, 5);
-  if (policeCar) {
-    context.fillStyle = '#eef8ff'; context.fillRect(-4, -breadth / 2 - 4, 9, 4);
-    context.fillStyle = '#f24d6c'; context.fillRect(-4, -breadth / 2 - 4, 4, 4);
-    context.fillStyle = '#55dfff'; context.fillRect(0, -breadth / 2 - 4, 5, 4);
-  }
-  context.restore();
+function car(x, y, angle, color, type = 'sedan', size = 1, police = false) {
+  const [sx, sy] = point(x, y); ctx.save(); ctx.translate(sx, sy); ctx.rotate(angle);
+  const length = (type === 'van' ? 52 : type === 'bike' ? 33 : 43) * size, width = (type === 'van' ? 25 : 21) * size;
+  ctx.shadowColor = police ? '#57d9ff' : '#000'; ctx.shadowBlur = police ? 14 : 8; box(-length / 2, -width / 2, length, width, 6, color, '#111820'); ctx.shadowBlur = 0;
+  box(-length * .12, -width * .37, length * .42, width * .74, 4, police ? '#b9d8df' : '#7eabb2', null);
+  ctx.fillStyle = '#f8d79a'; ctx.fillRect(length * .32, -width * .33, 4, 5); ctx.fillRect(length * .32, width * .13, 4, 5);
+  ctx.fillStyle = '#e46155'; ctx.fillRect(-length * .48, -width * .32, 3, 5); ctx.fillRect(-length * .48, width * .12, 3, 5);
+  if (police) { ctx.fillStyle = '#f24d6c'; ctx.fillRect(-4, -width / 2 - 4, 4, 4); ctx.fillStyle = '#55dfff'; ctx.fillRect(0, -width / 2 - 4, 5, 4); }
+  ctx.restore();
 }
-function paintWalker(person) {
-  const [x, y] = toScreen(person.x, person.y);
-  context.fillStyle = 'rgba(0,0,0,.32)'; context.beginPath(); context.ellipse(x, y + 4, 5, 3, 0, 0, tau); context.fill();
-  context.fillStyle = person.color; context.beginPath(); context.arc(x, y - 4, 4, 0, tau); context.fill(); context.fillRect(x - 3, y, 6, 10);
+function walker(person) { const [x, y] = point(person.x, person.y); ctx.fillStyle = 'rgba(0,0,0,.32)'; ctx.beginPath(); ctx.ellipse(x, y + 4, 5, 3, 0, 0, tau); ctx.fill(); ctx.fillStyle = person.color; ctx.beginPath(); ctx.arc(x, y - 4, 4, 0, tau); ctx.fill(); ctx.fillRect(x - 3, y, 6, 10); }
+function marker(x, y, color, caption) { const [sx, sy] = point(x, y), pulse = 1 + Math.sin(elapsed * 4) * .08; ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(sx, sy, 21 * pulse, 0, tau); ctx.stroke(); ctx.fillStyle = color; ctx.globalAlpha = .18; ctx.beginPath(); ctx.arc(sx, sy, 15, 0, tau); ctx.fill(); ctx.globalAlpha = 1; label(caption, sx, sy - 28, 10, color, 'center'); }
+function minimap() {
+  const x = 1106, y = 48, size = 132; box(x - 10, y - 10, size + 20, size + 50);
+  ctx.save(); ctx.beginPath(); ctx.roundRect(x, y, size, size, 8); ctx.clip(); ctx.fillStyle = '#14232c'; ctx.fillRect(x, y, size, size); ctx.strokeStyle = '#52616a'; ctx.lineWidth = 5;
+  for (let n = 0; n < 5; n++) { ctx.beginPath(); ctx.moveTo(x + n * 37 - 12, y); ctx.lineTo(x + n * 37 + 18, y + size); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, y + n * 36); ctx.lineTo(x + size, y + n * 36 - 15); ctx.stroke(); }
+  ctx.fillStyle = '#f0bc5e'; ctx.beginPath(); ctx.arc(x + 66 + (310 - hero.x) * .07, y + 66 + (-120 - hero.y) * .07, 4, 0, tau); ctx.fill(); ctx.fillStyle = '#ff5568';
+  for (const cop of patrols) { ctx.beginPath(); ctx.arc(x + 66 + (cop.x - hero.x) * .07, y + 66 + (cop.y - hero.y) * .07, 3, 0, tau); ctx.fill(); }
+  ctx.translate(x + 66, y + 66); ctx.rotate(hero.angle); ctx.fillStyle = '#75f4e2'; ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(6, 7); ctx.lineTo(0, 4); ctx.lineTo(-6, 7); ctx.closePath(); ctx.fill(); ctx.restore(); label('VESPERA  /  GRID', x, y + size + 23, 9, '#9baeb6');
 }
-function paintMarker(x, y, color, caption) {
-  const [sx, sy] = toScreen(x, y);
-  const pulse = 1 + Math.sin(clock * 4) * .08;
-  context.strokeStyle = color; context.lineWidth = 2; context.beginPath(); context.arc(sx, sy, 21 * pulse, 0, tau); context.stroke();
-  context.fillStyle = color; context.globalAlpha = .18; context.beginPath(); context.arc(sx, sy, 15, 0, tau); context.fill(); context.globalAlpha = 1;
-  text(caption, sx, sy - 28, 10, color, 'center');
+function hud() {
+  box(25, 22, 315, 96); label('NIGHTFALL', 44, 52, 12, '#66d7d5'); label('DISTRICT ZERO', 44, 70, 10, '#d5e3e8'); label(`$${hero.cash.toLocaleString()}`, 321, 52, 15, '#e6c47f', 'right'); label('JACE MERCER', 44, 101, 11, '#b4c1c7');
+  label(`VESPERA • ${districts[(Math.floor(Math.abs(hero.x) / 450) + Math.floor(Math.abs(hero.y) / 390)) % 8]}`, 183, 101, 10, '#8fa3ab');
+  box(25, 679, 340, 93); label(hero.job, 44, 710, 12, '#70ddda'); label(`◈  ${hero.goal}`, 44, 734, 12, '#edf2ee'); label('J  JOURNAL', 44, 757, 9, '#85969f');
+  box(482, 730, 316, 43); label('W  DRIVE', 503, 756, 10, '#a5b3bb'); label('A D  STEER', 590, 756, 10, '#a5b3bb'); label('E  INTERACT', 690, 756, 10, '#a5b3bb');
+  box(1085, 690, 171, 78); label('HEALTH', 1102, 717, 9, '#a6b2ba'); box(1155, 708, 84, 8, 4, '#36414a', null); box(1155, 708, 84 * hero.health / 100, 8, 4, '#d86166', null); label('ARMOR', 1102, 739, 9, '#a6b2ba'); box(1155, 730, 84, 8, 4, '#36414a', null); box(1155, 730, 84 * hero.armor / 100, 8, 4, '#58b9bf', null);
+  box(1090, 594, 166, 73); label(hero.car, 1106, 619, 10, '#e6c57e'); label(`${Math.round(Math.abs(hero.speed) * 31)} KM/H`, 1106, 646, 16, '#f1f5f5'); label(`▣  ${hero.ammo} / 68`, 1106, 664, 9, '#9cabb1');
+  label('VE', 1099, 233, 10, '#a9bbc1'); for (let n = 0; n < 5; n++) label('★', 1127 + n * 23, 235, 17, n < hero.heat ? '#f3c866' : '#46515a'); if (hero.heat) label(hero.heat >= 4 ? 'POLICE RESPONSE  •  BREAK LINE OF SIGHT' : 'POLICE INTEREST', 1086, 257, 8, '#f28d85');
+  minimap(); if (toastTime > 0) { box(417, 26, 446, 42); label(toast, 640, 53, 11, '#e6d3a2', 'center'); }
 }
-
-function paintMinimap() {
-  const left = screen.width - 164; const top = 48; const size = 132;
-  card(left - 10, top - 10, size + 20, size + 50);
-  context.save(); context.beginPath(); context.roundRect(left, top, size, size, 8); context.clip();
-  context.fillStyle = '#14232c'; context.fillRect(left, top, size, size);
-  context.strokeStyle = '#52616a'; context.lineWidth = 5;
-  for (let road = 0; road < 5; road += 1) {
-    context.beginPath(); context.moveTo(left + road * 37 - 12, top); context.lineTo(left + road * 37 + 18, top + size); context.stroke();
-    context.beginPath(); context.moveTo(left, top + road * 36); context.lineTo(left + size, top + road * 36 - 15); context.stroke();
-  }
-  context.fillStyle = '#f0bc5e'; context.beginPath(); context.arc(left + size / 2 + (310 - player.x) * .07, top + size / 2 + (-120 - player.y) * .07, 4, 0, tau); context.fill();
-  context.fillStyle = '#ff5568';
-  for (const cop of cruisers) { context.beginPath(); context.arc(left + size / 2 + (cop.x - player.x) * .07, top + size / 2 + (cop.y - player.y) * .07, 3, 0, tau); context.fill(); }
-  context.translate(left + size / 2, top + size / 2); context.rotate(player.angle); context.fillStyle = '#75f4e2';
-  context.beginPath(); context.moveTo(0, -8); context.lineTo(6, 7); context.lineTo(0, 4); context.lineTo(-6, 7); context.closePath(); context.fill(); context.restore();
-  text('VESPERA  /  GRID', left, top + size + 23, 9, '#9baeb6');
+function title() {
+  ctx.fillStyle = 'rgba(5,10,17,.68)'; ctx.fillRect(0, 0, 1280, 800); ctx.save(); ctx.translate(82, 191); ctx.fillStyle = '#6ee1dc'; ctx.fillRect(0, 0, 4, 140);
+  label('NIGHTFALL', 25, 25, 14, '#81e7dd'); label('DISTRICT', 25, 86, 48, '#f5f3e9'); label('ZERO', 25, 143, 54, '#f3cb75'); label('THE CITY REMEMBERS EVERYTHING.', 26, 181, 13, '#bfccd0'); box(22, 222, 356, 202);
+  label('NEW GAME', 45, 264, 15); label(`${localStorage.getItem('nightfall-save') ? 'CONTINUE  •  SAVED CAMPAIGN' : 'CONTINUE  •  NO SAVE YET'}`, 45, 302, 13, '#a9b8be'); label(`SETTINGS  •  AUDIO ${localStorage.getItem('nightfall-muted') === '1' ? 'OFF' : 'ON'}`, 45, 340, 13, '#a9b8be'); label('CONTROLS  •  WASD / E / F / J / M', 45, 378, 13, '#a9b8be'); label('ENTER  NEW GAME     C  CONTINUE', 26, 461, 10, '#70d5d2'); ctx.restore();
 }
-
-function paintHud() {
-  card(25, 22, 315, 96); text('NIGHTFALL', 44, 52, 12, '#66d7d5'); text('DISTRICT ZERO', 44, 70, 10, '#d5e3e8');
-  text(`$${player.cash.toLocaleString()}`, 321, 52, 15, '#e6c47f', 'right'); text('JACE MERCER', 44, 101, 11, '#b4c1c7');
-  text(`VESPERA • ${neighborhoods[(Math.floor(Math.abs(player.x) / 450) + Math.floor(Math.abs(player.y) / 390)) % neighborhoods.length]}`, 183, 101, 10, '#8fa3ab');
-  card(25, screen.height - 121, 340, 93); text(player.job, 44, screen.height - 90, 12, '#70ddda');
-  text(`◈  ${player.objective}`, 44, screen.height - 66, 12, '#edf2ee'); text('J  JOURNAL', 44, screen.height - 43, 9, '#85969f');
-  card(screen.width / 2 - 158, screen.height - 70, 316, 43); text('W  DRIVE', screen.width / 2 - 137, screen.height - 44, 10, '#a5b3bb');
-  text('A D  STEER', screen.width / 2 - 50, screen.height - 44, 10, '#a5b3bb'); text('E  INTERACT', screen.width / 2 + 48, screen.height - 44, 10, '#a5b3bb');
-  card(screen.width - 195, screen.height - 110, 171, 78); text('HEALTH', screen.width - 178, screen.height - 83, 9, '#a6b2ba');
-  roundedRect(screen.width - 125, screen.height - 92, 84, 8, 4, '#36414a'); roundedRect(screen.width - 125, screen.height - 92, 84 * player.health / 100, 8, 4, '#d86166');
-  text('ARMOR', screen.width - 178, screen.height - 61, 9, '#a6b2ba'); roundedRect(screen.width - 125, screen.height - 70, 84, 8, 4, '#36414a');
-  roundedRect(screen.width - 125, screen.height - 70, 84 * player.armor / 100, 8, 4, '#58b9bf');
-  card(screen.width - 190, screen.height - 206, 166, 73); text(player.carName, screen.width - 174, screen.height - 181, 10, '#e6c57e');
-  text(`${Math.round(Math.abs(player.speed) * 31)} KM/H`, screen.width - 174, screen.height - 154, 16, '#f1f5f5');
-  text(`▣  ${player.ammo} / 68`, screen.width - 174, screen.height - 136, 9, '#9cabb1'); text('VE', screen.width - 181, 233, 10, '#a9bbc1');
-  for (let star = 0; star < 5; star += 1) text('★', screen.width - 153 + star * 23, 235, 17, star < player.wanted ? '#f3c866' : '#46515a');
-  if (player.wanted > 0) text(player.wanted >= 4 ? 'POLICE RESPONSE  •  BREAK LINE OF SIGHT' : 'POLICE INTEREST', screen.width - 194, 257, 8, '#f28d85');
-  paintMinimap();
-  if (messageSeconds > 0) { card(screen.width / 2 - 223, 26, 446, 42); text(message, screen.width / 2, 53, 11, '#e6d3a2', 'center'); }
+function mapOverlay() {
+  ctx.fillStyle = 'rgba(3,8,14,.86)'; ctx.fillRect(0, 0, 1280, 800); label('VESPERA CITY', 640, 85, 25, '#e7c475', 'center'); label('DISTRICT ATLAS  /  M', 640, 111, 10, '#9baeb3', 'center'); ctx.strokeStyle = '#53646b'; ctx.lineWidth = 21;
+  for (let n = 0; n < 7; n++) { ctx.beginPath(); ctx.moveTo(310 + n * 105, 190); ctx.lineTo(390 + n * 60, 615); ctx.stroke(); ctx.beginPath(); ctx.moveTo(255, 240 + n * 53); ctx.lineTo(1025, 210 + n * 48); ctx.stroke(); }
+  districts.forEach((name, i) => label(name, 330 + (i % 4) * 178, 300 + Math.floor(i / 4) * 180, 11, '#d5dedc', 'center')); ctx.fillStyle = '#64eee0'; ctx.beginPath(); ctx.arc(640, 400, 8, 0, tau); ctx.fill(); label('JACE', 657, 405, 10); label('ESC  CLOSE', 640, 716, 10, '#91a5ac', 'center');
 }
-
-function paintTitle() {
-  context.fillStyle = 'rgba(5,10,17,.68)'; context.fillRect(0, 0, screen.width, screen.height);
-  context.save(); context.translate(82, 191); context.fillStyle = '#6ee1dc'; context.fillRect(0, 0, 4, 140);
-  text('NIGHTFALL', 25, 25, 14, '#81e7dd'); text('DISTRICT', 25, 86, 48, '#f5f3e9'); text('ZERO', 25, 143, 54, '#f3cb75');
-  text('THE CITY REMEMBERS EVERYTHING.', 26, 181, 13, '#bfccd0'); card(22, 222, 356, 202);
-  text('NEW GAME', 45, 264, 15); text(`${localStorage.getItem('nightfall-save') ? 'CONTINUE  •  SAVED CAMPAIGN' : 'CONTINUE  •  NO SAVE YET'}`, 45, 302, 13, '#a9b8be');
-  text(`SETTINGS  •  AUDIO ${localStorage.getItem('nightfall-muted') === '1' ? 'OFF' : 'ON'}`, 45, 340, 13, '#a9b8be');
-  text('CONTROLS  •  WASD / E / F / J / M', 45, 378, 13, '#a9b8be'); text('ENTER  NEW GAME     C  CONTINUE', 26, 461, 10, '#70d5d2'); context.restore();
+function journalOverlay() {
+  ctx.fillStyle = 'rgba(3,8,14,.8)'; ctx.fillRect(0, 0, 1280, 800); box(380, 180, 520, 440); label(paused ? 'PAUSED  •  ESC RESUME' : 'MISSION JOURNAL  •  J CLOSE', 640, 223, 21, '#ead08d', 'center');
+  jobs.forEach((job, i) => { const state = states[i]; label(`${state}   ${job[0]}`, 420, 272 + i * 35, 11, state === 'ACTIVE' ? '#70ddda' : state === 'COMPLETED' ? '#e6c47f' : '#92a1a8'); label(job[1], 550, 272 + i * 35, 10, '#c6d0d1'); });
+  if (paused) label('M MAP  •  J MISSIONS  •  K SAVE  •  ESC RESUME', 640, 587, 10, '#70d5d2', 'center');
 }
-
-function paintMap() {
-  context.fillStyle = 'rgba(3,8,14,.86)'; context.fillRect(0, 0, screen.width, screen.height);
-  text('VESPERA CITY', screen.width / 2, 85, 25, '#e7c475', 'center'); text('DISTRICT ATLAS  /  M', screen.width / 2, 111, 10, '#9baeb3', 'center');
-  context.strokeStyle = '#53646b'; context.lineWidth = 21;
-  for (let route = 0; route < 7; route += 1) {
-    context.beginPath(); context.moveTo(310 + route * 105, 190); context.lineTo(390 + route * 60, 615); context.stroke();
-    context.beginPath(); context.moveTo(255, 240 + route * 53); context.lineTo(1025, 210 + route * 48); context.stroke();
-  }
-  neighborhoods.forEach((name, index) => text(name, 330 + (index % 4) * 178, 300 + Math.floor(index / 4) * 180, 11, '#d5dedc', 'center'));
-  context.fillStyle = '#64eee0'; context.beginPath(); context.arc(screen.width / 2, screen.height / 2, 8, 0, tau); context.fill();
-  text('JACE', screen.width / 2 + 17, screen.height / 2 + 5, 10); text('ESC  CLOSE', screen.width / 2, screen.height - 84, 10, '#91a5ac', 'center');
+function draw() {
+  streets(); for (const part of blocks) if (Math.abs(part.x * 220 - hero.x) < 1050 && Math.abs(part.y * 205 - hero.y) < 900) building(part);
+  marker(310, -120, '#f1bd61', jobs[Math.min(hero.chapter, jobs.length - 1)][0]); traffic.forEach(v => car(v.x, v.y, v.dir, v.color, v.type, .88)); people.forEach(walker);
+  for (const shot of shots) { const [x, y] = point(shot.x, shot.y); ctx.fillStyle = '#f8d46c'; ctx.beginPath(); ctx.arc(x, y, 3, 0, tau); ctx.fill(); }
+  patrols.forEach(cop => car(cop.x, cop.y, cop.dir, '#d8e0e0', 'sedan', 1.05, true));
+  if (hero.walking) walker({ x: hero.x, y: hero.y, color: '#65e1d7' }); else car(hero.x, hero.y, hero.angle, hero.car === 'ROOK GT' ? '#d36657' : hero.car === 'KESTREL S9' ? '#557f91' : '#c9a664', 'sedan', 1.14);
+  const shade = ctx.createRadialGradient(640, 400, 150, 640, 400, 690); shade.addColorStop(0, 'rgba(3,8,15,0)'); shade.addColorStop(1, 'rgba(3,8,15,.4)'); ctx.fillStyle = shade; ctx.fillRect(0, 0, 1280, 800);
+  if (night) { ctx.fillStyle = 'rgba(5,12,34,.16)'; ctx.fillRect(0, 0, 1280, 800); } hud(); if (menu) title(); if (atlas) mapOverlay(); if ((journal || paused) && !menu) journalOverlay();
 }
-
-function paintJournal() {
-  context.fillStyle = 'rgba(3,8,14,.8)'; context.fillRect(0, 0, screen.width, screen.height);
-  card(screen.width / 2 - 260, screen.height / 2 - 220, 520, 440);
-  text(paused ? 'PAUSED  •  ESC RESUME' : 'MISSION JOURNAL  •  J CLOSE', screen.width / 2, screen.height / 2 - 177, 21, '#ead08d', 'center');
-  jobs.forEach((job, index) => {
-    const state = missionStates[index];
-    text(`${state}   ${job[0]}`, screen.width / 2 - 220, screen.height / 2 - 128 + index * 35, 11, state === 'ACTIVE' ? '#70ddda' : state === 'COMPLETED' ? '#e6c47f' : '#92a1a8');
-    text(job[1], screen.width / 2 - 90, screen.height / 2 - 128 + index * 35, 10, '#c6d0d1');
-  });
-  if (paused) text('M MAP  •  J MISSIONS  •  K SAVE  •  ESC RESUME', screen.width / 2, screen.height / 2 + 187, 10, '#70d5d2', 'center');
+let last = performance.now(), frames = 0;
+function frame(now) {
+  const dt = Math.min(.04, (now - last) / 1000); last = now;
+  if (preview) {
+    elapsed += dt;
+    for (const v of traffic) { v.x += Math.cos(v.dir) * v.pace * dt * 42; v.y += Math.sin(v.dir) * v.pace * dt * 42; }
+    for (const p of people) { p.x += Math.cos(p.dir) * p.pace * dt * 24; p.y += Math.sin(p.dir) * p.pace * dt * 24; }
+    for (const cop of patrols) { cop.dir = Math.atan2(hero.y - cop.y, hero.x - cop.x); cop.x += Math.cos(cop.dir) * cop.pace * dt * 42; cop.y += Math.sin(cop.dir) * cop.pace * dt * 42; }
+    if (++frames === 3) window.__shotReady = true;
+  } else update(dt);
+  draw(); requestAnimationFrame(frame);
 }
-
-function render() {
-  paintStreets();
-  for (const building of architecture) {
-    if (Math.abs(building.col * 220 - player.x) < 1050 && Math.abs(building.row * 205 - player.y) < 900) paintBuilding(building);
-  }
-  paintMarker(310, -120, '#f1bd61', jobs[Math.min(player.step, jobs.length - 1)][0]);
-  for (const car of cars) paintCar(car.x, car.y, car.angle, car.color, car.kind, .88);
-  walkers.forEach(paintWalker);
-  for (const tracer of tracers) { const [x, y] = toScreen(tracer.x, tracer.y); context.fillStyle = '#f8d46c'; context.beginPath(); context.arc(x, y, 3, 0, tau); context.fill(); }
-  cruisers.forEach(cop => paintCar(cop.x, cop.y, cop.angle, '#d8e0e0', 'sedan', 1.05, true));
-  if (player.onFoot) paintWalker({ x: player.x, y: player.y, color: '#65e1d7' });
-  else paintCar(player.x, player.y, player.angle, player.carName === 'ROOK GT' ? '#d36657' : player.carName === 'KESTREL S9' ? '#557f91' : '#c9a664', 'sedan', 1.14);
-  const shade = context.createRadialGradient(screen.width / 2, screen.height / 2, 150, screen.width / 2, screen.height / 2, 690);
-  shade.addColorStop(0, 'rgba(3,8,15,0)'); shade.addColorStop(1, 'rgba(3,8,15,.4)'); context.fillStyle = shade; context.fillRect(0, 0, screen.width, screen.height);
-  if (nightTint) { context.fillStyle = 'rgba(5,12,34,.16)'; context.fillRect(0, 0, screen.width, screen.height); }
-  paintHud();
-  if (titleScreen) paintTitle();
-  if (mapVisible) paintMap();
-  if ((journalVisible || paused) && !titleScreen) paintJournal();
-}
-
-let previous = performance.now();
-let previewFrames = 0;
-function animate(now) {
-  const delta = Math.min(.04, (now - previous) / 1000);
-  previous = now;
-  if (shot) {
-    clock += delta;
-    for (const car of cars) { car.x += Math.cos(car.angle) * car.pace * delta * 42; car.y += Math.sin(car.angle) * car.pace * delta * 42; }
-    for (const person of walkers) { person.x += Math.cos(person.angle) * person.pace * delta * 24; person.y += Math.sin(person.angle) * person.pace * delta * 24; }
-    for (const cop of cruisers) { cop.angle = Math.atan2(player.y - cop.y, player.x - cop.x); cop.x += Math.cos(cop.angle) * cop.pace * delta * 42; cop.y += Math.sin(cop.angle) * cop.pace * delta * 42; }
-    if (++previewFrames === 3) window.__shotReady = true;
-  } else tick(delta);
-  render();
-  requestAnimationFrame(animate);
-}
-requestAnimationFrame(animate);
+requestAnimationFrame(frame);
