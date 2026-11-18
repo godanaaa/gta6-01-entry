@@ -1,6 +1,26 @@
 [
-  {"query": "?shot=night&seed=1", "description": "The city after dark", "name": "4-night.jpg"},
-  {"query": "?shot=chase&seed=1", "description": "A high-speed pursuit", "name": "3-chase.jpg"},
-  {"query": "?shot=play&seed=1", "description": "An open-world moment", "name": "2-play.jpg"},
-  {"query": "?shot=start&seed=1", "description": "The opening scene", "name": "1-start.jpg"}
+  {
+    "description": "Jace driving through dense downtown traffic, HUD and minimap live",
+    "file": "1-start.jpg",
+    "name": "Downtown drive",
+    "query": "start"
+  },
+  {
+    "description": "A chapter objective in progress, on foot in the city streets",
+    "file": "2-play.jpg",
+    "name": "Mission on foot",
+    "query": "play"
+  },
+  {
+    "description": "Cruisers in pursuit with the wanted stars showing on the HUD",
+    "file": "3-chase.jpg",
+    "name": "Police pursuit",
+    "query": "chase"
+  },
+  {
+    "description": "Vespera City after dark, streetlights and neon over the districts",
+    "file": "4-night.jpg",
+    "name": "City at night",
+    "query": "night"
+  }
 ]

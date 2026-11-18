@@ -1,59 +1,114 @@
 # NIGHTFALL: DISTRICT ZERO
 
-[![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
-[![rank](https://make.fun/badge/gta6-01/godanaaa/gta6-01-entry/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
-[![reward](https://make.fun/badge/gta6-01/godanaaa/gta6-01-entry/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![make.fun bounty](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01)
+[![make.fun rank](https://make.fun/badge/gta6-01/godanaaa/gta6-01-entry/rank.svg)](https://make.fun/bounty/gta6-01)
+[![make.fun reward](https://make.fun/badge/gta6-01/godanaaa/gta6-01-entry/reward.svg)](https://make.fun/bounty/gta6-01)
 
-**The city remembers everything.** Jace Mercer returns to Vespera, a fictional coastal city, after his mentor Elias Rook disappears. Fixer Mara Venn offers a way back into Rook's network, while rival crews and the police close in.
+An entry for [make.fun/bounty/gta6-01](https://make.fun/bounty/gta6-01) — "Make GTA 6".
 
-This project is entered in the [Make GTA 6 bounty](https://make.fun/bounty/gta6-01).
+**NIGHTFALL: DISTRICT ZERO** is an original 2D top-down open-world crime game.
+The city remembers everything. So does Jace Mercer.
 
-## Run it locally
+## The story
 
-From this repository, start the included static server:
+Jace Mercer comes home to Vespera City after years away, and finds the
+world he left behind has moved on without him. His mentor, Elias Rook,
+has vanished, and the criminal network Rook built is being torn apart by
+the factions that want to control it. Mara Venn, a fixer who owes Rook
+a debt, hands Jace his first job — and from there the night only gets
+deeper. Across eight chapters Jace steals, delivers, breaks in, runs,
+and finally settles the score in District Zero itself.
 
-```sh
-node serve.ts
-```
+Everything here is original: the city, the people, the cars, the names,
+the story, the art. Nothing is borrowed from any other game.
 
-Visit `http://localhost:8080` in a desktop browser. The page uses a 2D Canvas scene and files stored in `game/`; gameplay makes no network requests.
+## Vespera City
 
-The four repeatable preview addresses are listed in [`shots.json`](shots.json): `?shot=start&seed=1`, `?shot=play&seed=1`, `?shot=chase&seed=1`, and `?shot=night&seed=1`.
+A fictional coastal metropolis, built as one compact, driveable map
+with eight districts that each look and feel different:
+
+- **Harbor** — cranes, containers, and the Blackwater docks
+- **Downtown** — towers, neon, and the Vespera Tower skyline
+- **Old Quarter** — narrow streets and the night market
+- **Industrial** — the Ironworks factory and warehouse rows
+- **Hillside** — steep streets and the Sunset Overlook
+- **Market** — crowded stalls and the Neon Arcade
+- **Southside** — the Crown Hotel and the late-night streets
+- **Airport / Transit** — Central Station and the Meridian Bridge
+
+Landmarks worth finding: Vespera Tower, Meridian Bridge, Blackwater
+Harbor, Neon Arcade, Central Station, Crown Hotel, Ironworks Factory,
+Old Quarter Market, and Sunset Overlook.
+
+## What you can do
+
+- **Drive the city.** Walk, sprint, and jump on foot; steal any car
+  you can reach and drive it. Nine rides, from a battered compact to
+  a police cruiser, each with its own handling.
+- **Outrun the law.** A wanted level from 0 to 5 stars. One star and
+  the police are curious; five and the whole city is coming for you.
+  Break line of sight, switch cars, and disappear.
+- **Fight back.** A small arsenal of fictional weapons — pistol, heavy
+  pistol, SMG, shotgun, rifle — with ammo, reloads, and muzzle flash.
+- **Work the eight chapters.** Each mission has its own objective:
+  meet a contact, steal a van, deliver a package, break into a
+  warehouse, outrun rivals, lift a ledger, spring an ally, and the
+  finale in District Zero. Missions track as locked, available,
+  active, completed, or failed.
+- **Live in the city.** Traffic follows the roads, pedestrians cross
+  the streets and scatter when shots ring out, and the police react
+  to what they see. Day turns to night; the streetlights come on.
+- **Keep what you earn.** Cash from missions, a save system that
+  remembers your progress, and a safehouse to come back to.
 
 ## Controls
 
-| Key or input | Action |
-| --- | --- |
-| W / S or Up / Down | Move forward or backward; accelerate or reverse in a car |
-| A / D or Left / Right | Turn on foot; steer while driving |
-| E | Leave a vehicle, enter nearby traffic, or use the mission marker |
-| F or left mouse button | Fire the selected weapon if it has ammunition |
-| Q | Select the next weapon slot |
-| R | Refresh the displayed rounds from the selected slot |
-| 1, 2, or 3 | Change the displayed vehicle model |
-| J | Open or dismiss the mission journal |
-| M | Show or hide the district map |
-| K | Save campaign progress in browser storage |
-| Escape | Pause or resume |
-| Enter | Begin a campaign or continue saved progress from the title screen |
+| Key | Action |
+| --- | ------ |
+| WASD / arrows | Move / drive |
+| Shift | Sprint |
+| Space | Jump |
+| C | Crouch |
+| E | Interact / enter vehicle |
+| Mouse + LMB | Aim / shoot |
+| RMB | Aim |
+| R | Reload |
+| M | Map |
+| Esc | Pause |
 
-Drive or walk to the gold marker. Leave the car and press E near the objective to finish the current chapter. Chapters award cash and reputation; the browser save stores campaign resources and mission state.
+On-screen prompts tell you when you can enter a car or talk to
+someone. The HUD shows health, armor, ammo, weapon, cash, wanted
+stars, your current objective, and a minimap with the mission marker.
 
-## City and campaign
+## How to run it
 
-Vespera's eight districts are Harbor, Downtown, Old Quarter, Industrial, Hillside, Market, Southside, and Transit. A seeded street grid, colored buildings, lit windows, road traffic, pedestrians, a destination marker, minimap, and HUD create the city view. Gunfire and vehicle theft increase police attention. Up to five wanted stars are shown as patrols follow the player; attention fades over time.
+The game is plain static files with no network use during play.
 
-The journal presents these story chapters with locked, available, active, and completed states:
+```sh
+node serve.ts          # serves game/ on localhost:8080
+```
 
-1. **BACK IN THE CITY** — meet Mara Venn and retrieve a stolen vehicle.
-2. **HOT CARGO** — steal a delivery van and take it to Blackwater warehouse.
-3. **NO QUESTIONS** — deliver the package and lose the police.
-4. **NIGHT SHIFT** — enter the warehouse and recover evidence.
-5. **CROSSTOWN** — cross Vespera while rivals pursue.
-6. **THE LEDGER** — infiltrate a business and take its ledger.
-7. **OLD DEBTS** — help an ally escape an enemy faction.
-8. **DISTRICT ZERO** — survive the finale and reach a safehouse.
+Open the page in desktop Chrome. `node --check game/src/main.js`
+checks the game source, and `MAKEFUN_OUTPUT_DIR=out node main.ts`
+builds `out/` with the entry dossier.
 
-## Implementation notes
+## Screenshots
 
-This is a compact top-down slice. All five weapon slots share one firing model, vehicle names change the displayed car style rather than its handling, and the chapters share a destination interaction. There is no enemy combat AI, vehicle damage, separate mission scripting, upgrades, weather, or synthesized audio yet. The preview states are deterministic and intended for recorded captures.
+Four deterministic states, driven by the `?shot=` query:
+
+- `?shot=start` — driving through dense downtown, traffic and HUD
+- `?shot=play` — a mission scene, on foot with the objective live
+- `?shot=chase` — a police pursuit with wanted stars showing
+- `?shot=night` — the city at night, streetlights and neon
+
+See `shots.json` for the full list.
+
+## Files
+
+- `game/index.html` — the page that hosts the game
+- `game/src/main.js` — the whole game: city, player, vehicles,
+  traffic, pedestrians, police, combat, missions, HUD, save
+- `main.ts` — the entrypoint; copies `game/` and `screenshots/`
+  into the output directory and writes `dossier.json`
+- `screenshots/` — the four captured states above
+- `shots.json` — the screenshot list with their query states
