@@ -1,17 +1,21 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#090e18">
-<title>NIGHTFALL: DISTRICT ZERO</title>
-<style>
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080d16;color:#edf5fa;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}canvas{display:block;width:100%;height:100%;touch-action:none}#status{position:absolute;left:-10000px}
-</style>
-</head>
-<body>
-<canvas id="game" aria-label="Nightfall: District Zero — drive through Vespera City, meet contacts and outrun the Vespera Police"></canvas>
-<div id="status" role="status" aria-live="polite"></div>
-<script type="module" src="./src/main.js"></script>
-</body>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#090e18">
+    <meta name="description" content="Explore Vespera City in this offline, top-down crime action game.">
+    <title>NIGHTFALL: DISTRICT ZERO</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #080d16; color: #edf5fa; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+      canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+      #status { position: absolute; left: -10000px; }
+    </style>
+  </head>
+  <body>
+    <canvas id="game" aria-label="Nightfall: District Zero. Drive Vespera City, meet contacts, and evade the city police."></canvas>
+    <div id="status" role="status" aria-live="polite"></div>
+    <script type="module" src="./src/main.js"></script>
+  </body>
 </html>
