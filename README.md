@@ -1,5 +1,11 @@
 # NIGHTFALL: DISTRICT ZERO
 
+[![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![rank](https://make.fun/badge/gta6-01/godanaaa/gta6-01-entry/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![reward](https://make.fun/badge/gta6-01/godanaaa/gta6-01-entry/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+
+Entry for the [Make GTA 6 bounty](https://make.fun/bounty/gta6-01) on make.fun.
+
 An offline 2D top-down crime-action slice set in Vespera City. Run `node serve.ts` and open `http://localhost:8080`. Staged visuals remain available at `?shot=start&seed=1`, `?shot=play&seed=1`, `?shot=chase&seed=1`, and `?shot=night&seed=1`.
 
 ## Controls
