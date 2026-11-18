@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#080d16">
-    <meta name="description" content="Return to Vespera City, where every street keeps its own record.">
+    <meta name="description" content="A quiet return to Vespera becomes a drive through a city that remembers.">
     <title>NIGHTFALL: DISTRICT ZERO</title>
     <style>
-      /* The game fills the preview window and has no scrollable page chrome. */
+      /* Reserve the entire browser view for the game canvas. */
       *,
       *::before,
       *::after {
@@ -25,6 +25,7 @@
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
       }
 
+      /* Keep pointer input on the canvas and avoid browser touch gestures. */
       #game {
         display: block;
         width: 100%;
@@ -32,6 +33,7 @@
         touch-action: none;
       }
 
+      /* Screen readers can announce status without adding visible page chrome. */
       #status {
         position: absolute;
         left: -10000px;
@@ -39,11 +41,9 @@
     </style>
   </head>
   <body>
-    <canvas
-      id="game"
-      aria-label="NIGHTFALL: DISTRICT ZERO. Explore Vespera, meet its residents, and evade the police."
-    ></canvas>
+    <canvas id="game" aria-label="NIGHTFALL: DISTRICT ZERO. Explore Vespera, meet its residents, and evade the police."></canvas>
     <div id="status" role="status" aria-live="polite"></div>
+    <!-- The game code is local so the page works from the included static server. -->
     <script type="module" src="./src/main.js"></script>
   </body>
 </html>
