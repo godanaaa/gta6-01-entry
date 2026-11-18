@@ -1,19 +1,33 @@
-// NIGHTFALL: DISTRICT ZERO is a small, offline story about returning to Vespera.
-// Canvas shapes supply the whole scene, so a static file server is all it needs.
+// NIGHTFALL: DISTRICT ZERO tells an offline crime story in the coastal city of Vespera.
+// Every visible object is drawn with the browser canvas; no remote assets are required.
 
-const canvas = document.querySelector('#game');
-const context = canvas.getContext('2d');
-const viewport = { width: 1280, height: 800 };
-const fullTurn = Math.PI * 2;
-const query = new URLSearchParams(location.search);
-const previewName = query.get('shot') || '';
-let randomSeed = Number(query.get('seed') || 1);
+// Keep the drawing surface in a fixed design coordinate space and scale it to the window.
+const playSurface = document.querySelector('#game');
+const paint = playSurface.getContext('2d');
+const designFrame = { width: 1280, height: 800 };
+const circleRadians = 2 * Math.PI;
+const addressOptions = new URLSearchParams(window.location.search);
+const previewScene = addressOptions.get('shot') ?? '';
+let diceState = Number(addressOptions.get('seed') ?? 1);
 
-function nextRandom() {
-  randomSeed = (randomSeed * 1664525 + 1013904223) >>> 0;
-  return randomSeed / 4294967296;
+function sampleSeededWorld() {
+  // A tiny repeatable generator makes the screenshot scenes stable from run to run.
+  diceState = (diceState * 1664525 + 1013904223) >>> 0;
+  return diceState / 4294967296;
 }
 
+// Preserve the descriptive names used by the existing drawing and simulation routines.
+const canvas = playSurface;
+const context = paint;
+const viewport = designFrame;
+const fullTurn = circleRadians;
+const query = addressOptions;
+const previewName = previewScene;
+function nextRandom() {
+  return sampleSeededWorld();
+}
+
+// The index of each district is shared by its label and its building palette.
 const districtNames = ['HARBOR', 'DOWNTOWN', 'OLD QUARTER', 'INDUSTRIAL', 'HILLSIDE', 'MARKET', 'SOUTHSIDE', 'TRANSIT'];
 const buildingColors = ['#35424b', '#393c49', '#3d4546', '#4a4141', '#384552', '#484146', '#34414a', '#39454b'];
 const chapters = [
@@ -186,6 +200,7 @@ function fireCurrentWeapon() {
   announce('DISCHARGE REPORTED  //  Police attention rising', 2.5);
 }
 
+// These four staged layouts are consumed by the separate screenshot recorder.
 function configurePreviewScene() {
   if (previewName === 'start') {
     Object.assign(player, { x: 0, y: 0, angle: 0.14, speed: 2.7, wanted: 0, objective: 'Meet Mara Venn at the Meridian underpass' });
@@ -256,6 +271,7 @@ function fitCanvas() {
 window.addEventListener('resize', fitCanvas);
 fitCanvas();
 
+// Advance simulation time once per animation frame, with a small stall guard.
 function updateFrame(seconds) {
   elapsedSeconds += seconds;
   bannerSeconds = Math.max(0, bannerSeconds - seconds);
@@ -632,6 +648,7 @@ function paintJournal() {
   if (isPaused) drawText('M MAP  •  J MISSIONS  •  K SAVE  •  ESC RESUME', 640, 587, 10, '#70d5d2', 'center');
 }
 
+// Paint the world first, then layer the interface and any active overlays above it.
 function drawScene() {
   paintRoadGrid();
   for (const building of city) {
