@@ -1,49 +1,69 @@
-<!doctype html>
+<!DOCTYPE html>
+<!--
+  NIGHTFALL: DISTRICT ZERO — the page that hosts the game.
+
+  This file does three small jobs and nothing else:
+    1. give the game a canvas to draw on,
+    2. keep that canvas filling the whole window,
+    3. load the game script.
+
+  Everything the player sees — the city, the HUD, the minimap, the
+  menus — is drawn by game/src/main.js onto the canvas below. The
+  script resizes the canvas to the window itself, so this page only
+  has to get out of the way: no margins, no scrollbars, a dark
+  backdrop behind the canvas while the first frame is prepared.
+-->
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#080d16">
-    <meta name="description" content="A quiet return to Vespera becomes a drive through a city that remembers.">
-    <title>NIGHTFALL: DISTRICT ZERO</title>
-    <style>
-      /* Reserve the entire browser view for the game canvas. */
-      *,
-      *::before,
-      *::after {
-        box-sizing: border-box;
-      }
+<head>
+  <meta charset="utf-8" />
+  <!--
+    The viewport tag keeps the page at device scale on small screens.
+    The game itself is built for a desktop keyboard and mouse, but the
+    canvas still fills whatever window it is given.
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NIGHTFALL: DISTRICT ZERO</title>
+  <style>
+    /*
+     * The page is a frame, not a document: the canvas is the whole
+     * experience. Hide the scrollbars, kill the default body margin,
+     * and paint the backdrop the colour of the night streets so a
+     * slow first paint still looks like the game.
+     */
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0a1216;
+    }
 
-      html,
-      body {
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        overflow: hidden;
-        background: #080d16;
-        color: #edf5fa;
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-      }
+    /* The single drawing surface. The game script sets its pixel
+       size from the window size on every resize. */
+    #game {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      cursor: crosshair;
+      touch-action: none;
+    }
+  </style>
+</head>
+<body>
+  <!--
+    The game's only element. main.js finds it with
+    document.querySelector('#game'), takes its 2D context, and runs
+    the whole of Vespera City from there.
+  -->
+  <canvas id="game"></canvas>
 
-      /* Keep pointer input on the canvas and avoid browser touch gestures. */
-      #game {
-        display: block;
-        width: 100%;
-        height: 100%;
-        touch-action: none;
-      }
-
-      /* Screen readers can announce status without adding visible page chrome. */
-      #status {
-        position: absolute;
-        left: -10000px;
-      }
-    </style>
-  </head>
-  <body>
-    <canvas id="game" aria-label="NIGHTFALL: DISTRICT ZERO. Explore Vespera, meet its residents, and evade the police."></canvas>
-    <div id="status" role="status" aria-live="polite"></div>
-    <!-- The game code is local so the page works from the included static server. -->
-    <script type="module" src="./src/main.js"></script>
-  </body>
+  <!--
+    The game, all of it, in one file. Loaded after the canvas so the
+    element exists before the script looks for it. Everything is
+    local — no network requests are made while playing.
+  -->
+  <script src="./src/main.js"></script>
+</body>
 </html>
