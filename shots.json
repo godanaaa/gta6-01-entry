@@ -1,18 +1,6 @@
 [
-  {
-    "name": "1-start.jpg",
-    "query": "?shot=start&seed=1"
-  },
-  {
-    "name": "2-play.jpg",
-    "query": "?shot=play&seed=1"
-  },
-  {
-    "name": "3-chase.jpg",
-    "query": "?shot=chase&seed=1"
-  },
-  {
-    "name": "4-night.jpg",
-    "query": "?shot=night&seed=1"
-  }
+  {"query": "?shot=night&seed=1", "description": "The city after dark", "name": "4-night.jpg"},
+  {"query": "?shot=chase&seed=1", "description": "A high-speed pursuit", "name": "3-chase.jpg"},
+  {"query": "?shot=play&seed=1", "description": "An open-world moment", "name": "2-play.jpg"},
+  {"query": "?shot=start&seed=1", "description": "The opening scene", "name": "1-start.jpg"}
 ]

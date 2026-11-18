@@ -4,65 +4,56 @@
 [![rank](https://make.fun/badge/gta6-01/godanaaa/gta6-01-entry/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![reward](https://make.fun/badge/gta6-01/godanaaa/gta6-01-entry/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 
-**The city remembers everything.** NIGHTFALL is an offline, overhead crime story set in Vespera, a fictional coastal city. Jace Mercer returns after years away and finds his mentor Elias Rook missing, with several factions trying to take control of Rook's network.
+**The city remembers everything.** Jace Mercer returns to Vespera, a fictional coastal city, after his mentor Elias Rook disappears. Fixer Mara Venn offers a way back into Rook's network, while rival crews and the police close in.
 
-The project is entered in the [Make GTA 6 bounty](https://make.fun/bounty/gta6-01).
+This project is entered in the [Make GTA 6 bounty](https://make.fun/bounty/gta6-01).
 
-## Launch the game
+## Run it locally
 
-From the repository directory, start the included static server:
+From this repository, start the included static server:
 
 ```sh
 node serve.ts
 ```
 
-Open `http://localhost:8080` in a desktop browser. The game draws its world with the Canvas API and loads only local files; it does not request remote scripts, images, or sound.
+Visit `http://localhost:8080` in a desktop browser. The page uses a 2D Canvas scene and files stored in `game/`; gameplay makes no network requests.
 
-For a fixed preview scene, add one of these query strings to the page address:
+The four repeatable preview addresses are listed in [`shots.json`](shots.json): `?shot=start&seed=1`, `?shot=play&seed=1`, `?shot=chase&seed=1`, and `?shot=night&seed=1`.
 
-| Scene | Query |
+## Controls
+
+| Key or input | Action |
 | --- | --- |
-| City drive | `?shot=start&seed=1` |
-| Mission in progress | `?shot=play&seed=1` |
-| Police pursuit | `?shot=chase&seed=1` |
-| Night waterfront | `?shot=night&seed=1` |
+| W / S or Up / Down | Move forward or backward; accelerate or reverse in a car |
+| A / D or Left / Right | Turn on foot; steer while driving |
+| E | Leave a vehicle, enter nearby traffic, or use the mission marker |
+| F or left mouse button | Fire the selected weapon if it has ammunition |
+| Q | Select the next weapon slot |
+| R | Refresh the displayed rounds from the selected slot |
+| 1, 2, or 3 | Change the displayed vehicle model |
+| J | Open or dismiss the mission journal |
+| M | Show or hide the district map |
+| K | Save campaign progress in browser storage |
+| Escape | Pause or resume |
+| Enter | Begin a campaign or continue saved progress from the title screen |
 
-## Playing
+Drive or walk to the gold marker. Leave the car and press E near the objective to finish the current chapter. Chapters award cash and reputation; the browser save stores campaign resources and mission state.
 
-| Input | Effect |
-| --- | --- |
-| W / S or Up / Down | Accelerate or reverse; walk forward or backward while outside a car |
-| A / D or Left / Right | Steer in a vehicle or turn on foot |
-| E | Exit a vehicle; on foot, use the mission marker or enter a nearby traffic car |
-| F or left mouse button | Fire the current weapon, when ammunition remains |
-| Q | Move to the next weapon slot |
-| R | Refill the displayed round count from that slot's ammunition |
-| 1, 2, or 3 | Pick the Arclight Velo, Kestrel S9, or Rook GT vehicle display |
-| J | Show or dismiss the mission journal |
-| M | Open or close the district atlas |
-| K | Store campaign progress in browser local storage |
-| Escape | Pause or return to play |
-| Enter | Start a campaign or resume a saved one from the title screen |
+## City and campaign
 
-Drive to the pulsing gold destination marker. Press E to leave the vehicle, walk to the objective, then press E again to complete the chapter. Completing a chapter awards both money and reputation. Continue restores the saved chapter and player resources in the browser profile that created the save.
+Vespera's eight districts are Harbor, Downtown, Old Quarter, Industrial, Hillside, Market, Southside, and Transit. A seeded street grid, colored buildings, lit windows, road traffic, pedestrians, a destination marker, minimap, and HUD create the city view. Gunfire and vehicle theft increase police attention. Up to five wanted stars are shown as patrols follow the player; attention fades over time.
 
-## City systems
-
-Vespera is represented as a compact street grid spanning Harbor, Downtown, Old Quarter, Industrial, Hillside, Market, Southside, and Transit. The view includes lit building windows, waterfront piers, moving road traffic, and pedestrians. The interface shows the current chapter and objective, money, health, armor, ammunition, vehicle speed, wanted stars, and a minimap with the player, destination, and police positions.
-
-Gunfire and taking a traffic vehicle attract police attention. The wanted display can rise to five stars. Patrol cars follow the player, and the wanted level slowly falls during play. The mission journal tracks eight story chapters:
+The journal presents these story chapters with locked, available, active, and completed states:
 
 1. **BACK IN THE CITY** — meet Mara Venn and retrieve a stolen vehicle.
-2. **HOT CARGO** — steal a delivery van and take it to the Blackwater warehouse.
-3. **NO QUESTIONS** — deliver an unknown package and lose the police.
+2. **HOT CARGO** — steal a delivery van and take it to Blackwater warehouse.
+3. **NO QUESTIONS** — deliver the package and lose the police.
 4. **NIGHT SHIFT** — enter the warehouse and recover evidence.
-5. **CROSSTOWN** — drive across Vespera while rivals pursue.
-6. **THE LEDGER** — infiltrate a business and take its records.
-7. **OLD DEBTS** — help a former ally escape an enemy faction.
+5. **CROSSTOWN** — cross Vespera while rivals pursue.
+6. **THE LEDGER** — infiltrate a business and take its ledger.
+7. **OLD DEBTS** — help an ally escape an enemy faction.
 8. **DISTRICT ZERO** — survive the finale and reach a safehouse.
 
-## Current implementation
+## Implementation notes
 
-This build provides one reusable destination interaction for the campaign chapters and a lightweight overhead police pursuit. The five weapon slots use the same firing behavior, while the three selected car names affect the displayed model color rather than vehicle handling. Browser saves retain chapter, cash, reputation, health, armor, mission states, and the night palette.
-
-The project does not yet include enemy combatants, vehicle damage, distinct mission objective logic, vehicle upgrades, weather, or synthesized audio. Those story beats are represented by the journal and destination interaction rather than separate mission scenes.
+This is a compact top-down slice. All five weapon slots share one firing model, vehicle names change the displayed car style rather than its handling, and the chapters share a destination interaction. There is no enemy combat AI, vehicle damage, separate mission scripting, upgrades, weather, or synthesized audio yet. The preview states are deterministic and intended for recorded captures.

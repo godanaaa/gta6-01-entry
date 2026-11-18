@@ -1,12 +1,17 @@
-// Assemble the offline game bundle and write the review dossier beside it.
+// Assemble the local game bundle and place its review dossier alongside the bundle.
 import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
 
-const repositoryDirectory = fileURLToPath(new URL('.', import.meta.url));
-const outputDirectory = process.env.MAKEFUN_OUTPUT_DIR || '/output';
-const bundleLimits = {
+const projectRoot = fileURLToPath(new URL('.', import.meta.url));
+const bundleDestination = process.env.MAKEFUN_OUTPUT_DIR || '/output';
+// Resolve every artifact from one root so custom output directories stay self-contained.
+function bundlePath(...segments: string[]) {
+  return join(bundleDestination, ...segments);
+}
+
+const dossierRules = {
   text_max_bytes: 163840,
   screenshots: {
     max: 4,
@@ -17,22 +22,22 @@ const bundleLimits = {
   game_path_max_bytes: 1000,
 };
 
-const sourceGameDirectory = join(repositoryDirectory, 'game');
-const sourceScreenshotDirectory = join(repositoryDirectory, 'screenshots');
-const targetGameDirectory = join(outputDirectory, 'game');
-const targetScreenshotDirectory = join(outputDirectory, 'screenshots');
-const targetDossierFile = join(outputDirectory, 'dossier.json');
+const localGame = join(projectRoot, 'game');
+const localCaptures = join(projectRoot, 'screenshots');
+const bundledGame = bundlePath('game');
+const bundledCaptures = bundlePath('screenshots');
+const dossierPath = bundlePath('dossier.json');
 
-// Prepare the output location before copying any of the local bundle assets.
-mkdirSync(outputDirectory, { recursive: true });
-cpSync(sourceGameDirectory, targetGameDirectory, { recursive: true });
-mkdirSync(targetScreenshotDirectory, { recursive: true });
+// Create the destination tree before adding the static game and capture folders.
+mkdirSync(bundleDestination, { recursive: true });
+cpSync(localGame, bundledGame, { recursive: true });
+mkdirSync(bundledCaptures, { recursive: true });
 
-// Captures are optional while developing, but are copied whenever present.
-if (existsSync(sourceScreenshotDirectory)) {
-  cpSync(sourceScreenshotDirectory, targetScreenshotDirectory, { recursive: true });
+// A build can run before captures exist; include them automatically when present.
+if (existsSync(localCaptures)) {
+  cpSync(localCaptures, bundledCaptures, { recursive: true });
 }
 
-// The kit helper inspects the finished bundle and serializes its dossier data.
-const dossierContents = buildDossier(outputDirectory, bundleLimits);
-writeFileSync(targetDossierFile, dossierContents);
+// Let the supplied kit inspect the complete output tree and serialize its report.
+const dossierJson = buildDossier(bundleDestination, dossierRules);
+writeFileSync(dossierPath, dossierJson);
