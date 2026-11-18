@@ -4,39 +4,40 @@
 [![rank](https://make.fun/badge/gta6-01/godanaaa/gta6-01-entry/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![reward](https://make.fun/badge/gta6-01/godanaaa/gta6-01-entry/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 
-Entry for the [Make GTA 6 bounty](https://make.fun/bounty/gta6-01). NIGHTFALL is an offline, 2D top-down crime-action game set in Vespera City. Start the local server with `node serve.ts`, then visit `http://localhost:8080`. Preview routes are `?shot=start&seed=1`, `?shot=play&seed=1`, `?shot=chase&seed=1`, and `?shot=night&seed=1`.
+An entry for the [Make GTA 6 bounty](https://make.fun/bounty/gta6-01). NIGHTFALL is an offline, overhead crime-action game set in Vespera City. Launch `node serve.ts` and open `http://localhost:8080`. The four fixed preview scenes are `?shot=start&seed=1`, `?shot=play&seed=1`, `?shot=chase&seed=1`, and `?shot=night&seed=1`.
 
-## How to play
+## Controls
 
-| Key | Action |
+| Input | Result |
 | --- | --- |
-| W / S | Accelerate or move on foot |
-| A / D | Steer or turn |
-| E | Leave a car; while walking, use the marker or enter a nearby car |
-| F or left click | Fire the selected weapon |
-| Q | Select the next ammunition slot |
-| R | Reload from the selected slot's stored ammunition |
-| 1 / 2 / 3 | Choose the displayed vehicle model |
-| J | Show or hide the mission journal |
-| M | Open or close the city map |
-| K | Save campaign progress in this browser |
-| Esc | Pause or resume |
-| Enter | Begin a new run or continue an existing save |
+| W / S | Drive forward or back; walk forward or back while outside |
+| A / D | Turn the vehicle or change facing direction on foot |
+| E | Step out of a vehicle; on foot, interact at the objective or take a nearby car |
+| F or left mouse button | Fire the equipped weapon |
+| Q | Cycle weapon slots |
+| R | Restore the selected slot's displayed ammunition |
+| 1 / 2 / 3 | Change the displayed vehicle model |
+| J | Open or dismiss the mission journal |
+| M | Show or hide the district atlas |
+| K | Store campaign progress in local browser storage |
+| Escape | Pause or return to the game |
+| Enter | Start a campaign or continue the saved one |
 
-Drive toward the gold objective marker, step out with E, walk up to the marker, and press E to finish the current job. Completions grant cash and reputation. Continue loads saved mission progress and player status from local storage.
+The gold ring marks the current destination. Drive close, leave the car, walk into the ring, and press E. Completed chapters award cash and reputation. Continue restores the saved chapter and player resources on this browser.
 
-## Campaign
+## The campaign
 
-The journal contains eight chapters: BACK IN THE CITY, HOT CARGO, NO QUESTIONS, NIGHT SHIFT, CROSSTOWN, THE LEDGER, OLD DEBTS, and DISTRICT ZERO. Each has an objective, payout, reputation value, marker, and LOCKED, AVAILABLE, ACTIVE, or COMPLETED status. All chapters currently use the same destination interaction to complete their objective.
+The journal tracks eight chapters: BACK IN THE CITY, HOT CARGO, NO QUESTIONS, NIGHT SHIFT, CROSSTOWN, THE LEDGER, OLD DEBTS, and DISTRICT ZERO. Their entries show LOCKED, AVAILABLE, ACTIVE, or COMPLETED. Each chapter has its own title, objective text, payout, reputation award, and destination marker; the current slice resolves them through the same marker interaction.
 
-## Game systems
+## City systems
 
-- Procedurally placed Vespera blocks, lit windows, roads, harbor piers, and eight named districts.
-- Player driving and walking, moving civilian traffic, pedestrians, vehicle entry, weapon slots, ammunition, and wanted stars from zero to five.
-- Police cruisers pursue the player; the HUD includes the mission, cash, health, armor, ammunition, speed, wanted level, and a minimap.
-- Start menu, pause and journal overlays, map, browser-local save/continue, plus the four deterministic preview scenes.
-- Canvas drawing and browser APIs only; the game does not load remote runtime assets.
+- A generated street grid, harbor piers, illuminated building fronts, and eight districts form the Vespera backdrop.
+- Jace can drive or travel on foot. Civilian cars and pedestrians move through the nearby scene, and cars can be taken while walking.
+- Gunfire and car theft increase the wanted rating. Pursuing police cars appear, and the HUD shows the response level.
+- The screen displays the active chapter, objective, money, health, armor, ammunition, speed, wanted stars, and a local map with player and police markers.
+- The start screen, pause overlay, district atlas, mission list, browser save, and four query-selected scenes are included.
+- The scene uses canvas drawing and built-in browser features. It loads no remote code or media.
 
-## Current limits
+## Scope notes
 
-This is a compact playable slice. Missions share one simple marker interaction, and the eight chapters do not yet have distinct mission mechanics. Weapon slots share firing behavior; there is no enemy gang AI, collision handling, walking collision, vehicle-specific handling, or combat damage. The settings and controls entries are visual labels, and there is no audio, weather, or evolving day/night cycle. Police pursuit and wanted decay are lightweight simulations rather than a full tiered response system.
+This is a compact game slice. Chapter objectives share a common interaction, and there is no distinct mission scripting, enemy gang behavior, collision damage, or vehicle-specific handling. Weapon slots currently share the same firing action. Settings and controls appear in the title screen as labels, and audio, weather, and a changing time cycle are not implemented. Police behavior is a small pursuit simulation rather than a full tiered response model.
